@@ -5,6 +5,7 @@ Ideas
   - re -> postfix
   - postfix -> nfa
   - multi-state simulator
+- Make sure it passes the same tests
 
 - Add enough for our favorite regex `"([^"\]|\\.)`
   - negated char class
