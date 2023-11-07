@@ -109,7 +109,7 @@ October 2021, and MyPy support came even later.
 
 ### post2fa
 
-```
+```python
 def post2nfa(postfix: List[op]) -> Optional[State]:
 
     stack: List[Frag] = []
@@ -176,7 +176,7 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
 ### match
 
 
-```
+```python
 def addstate(nlist: Dict[int, State], st: Optional[State]):
     if st is None:
         return
@@ -225,8 +225,8 @@ The issue of union types vs. sum types doesn't really come up in this code.
 Though it's starting to with `.` metacharacter support, and possibly char
 classes `[^"\]`.
 
-Here's a comment about something I leared the hard way - Union types in
-TypeScript / MyPy / Zephyr ASDL are more natural than sum types for
+Here's a comment / "rant" about something I leared the hard way - Union types
+in TypeScript / MyPy / Zephyr ASDL are more natural than sum types for
 representing languages:
 
 - <https://lobste.rs/s/tpe028/on_learning_compilers_creating#c_n8svhu> (on
