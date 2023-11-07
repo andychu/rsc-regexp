@@ -157,11 +157,12 @@ def re2post(pat: str) -> Optional[List[op]]:
                 return None  # error: nothing to repeat
             dst.append(Repeat(ch))
 
-        # Enhancement (was bug fix in Rust)
+        # Enhancement for "any byte" (was bug fix in Rust)
         elif ch == '.':
             if natom > 1:
                 natom -= 1
                 dst.append(Cat())
+
             dst.append(Dot())
             natom += 1
 
@@ -206,6 +207,11 @@ class Literal:
 
 
 @dataclass
+class DotState:
+    out: Optional['State']
+
+
+@dataclass
 class Split:
     out1: 'State'
     out2: Optional['State']
@@ -216,7 +222,7 @@ class Match:
     pass
 
 
-State = Union[Literal, Split, Match]
+State = Union[Literal, DotState, Split, Match]
 
 
 @dataclass
@@ -251,6 +257,8 @@ def Patch(patches: List[ToPatch], st: State):
             case Out1(to_patch):
                 match to_patch:
                     case Literal(_, _):
+                        to_patch.out = st
+                    case DotState(_):
                         to_patch.out = st
                     case Split(_, _):
                         to_patch.out1 = st
@@ -308,7 +316,9 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
                 stack.append(Frag(st_lit, out))
 
             case Dot():
-                raise NotImplementedError('Dot')
+                st_dot = DotState(None)
+                out = [Out1(st_dot)]
+                stack.append(Frag(st_dot, out))
 
             case CharClass(negated, items):
                 raise NotImplementedError('CharClass')
@@ -357,12 +367,12 @@ def match(start: State, s: str) -> bool:
         for st in clist.values():
             #print('st %s' % st)
             match st:
-                case Literal(c, out):
+                case Literal(c, _):
                     #log('b %d c %d', b , c)
                     if b == c:
                         addstate(nlist, st.out)
-                case Split(c):
-                    pass
+                case DotState(_):
+                    addstate(nlist, st.out)
 
         clist, nlist = nlist, clist
         nlist.clear()

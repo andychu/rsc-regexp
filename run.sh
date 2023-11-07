@@ -74,6 +74,16 @@ match-case() {
   echo
 }
 
+test-dot() {
+  match-case '.' ''
+  match-case '.' x
+  match-case '.' y
+  match-case '.*' xyz
+  match-case 'xx.*zz' xxzz
+  match-case 'xx.*xz' xyyyz
+  match-case 'xx.*zz' xxyyyzz
+}
+
 match() {
 
   match-case 'a' a
