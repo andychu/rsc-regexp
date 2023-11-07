@@ -158,14 +158,6 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
                 out = [Out1(st_lit)]
                 stack.append(Frag(st_lit, out))
 
-            case Dot():
-                st_dot = DotState(None)
-                out = [Out1(st_dot)]
-                stack.append(Frag(st_dot, out))
-
-            case CharClass(negated, items):
-                raise NotImplementedError('CharClass')
-
             case _:
                 raise RuntimeError('oops')
 
