@@ -65,7 +65,7 @@ The `py/nfa.py` file now **passes original tests**, except the `a.b` test,
 which is intentional.  We're interpreting `.` in the traditional way (any
 char).
 
-## I Read the Rust Code
+## I Read the Rust Code, More Than C
 
 Even though 
 
@@ -243,10 +243,13 @@ The main problem is that they're not fast enough:
 
 Which is another point for Rust.
 
-As mentioned, I definitely prefer the Rust to C, especially to make this
-production quality.  A C++ port would be interesting, but I actually want to
-explore regex algorithms (DFAs, derivatives), more than the implementation
-language.
+As mentioned, I definitely prefer the Rust to C, especially to make this code
+production quality.
+
+A C++ port would be interesting, but I actually want to explore regex
+algorithms (DFAs, derivatives), more than the implementation language.
+
+## Future Work
 
 I will probably do a few more experiments in Python, e.g. with
 
@@ -257,9 +260,4 @@ Which I mentioned back in 2020:
 - <http://www.oilshell.org/blog/2020/07/ideas-questions.html#regular-expression-derivatives-papers-and-code>
 
 (I forgot about all these links, and they were surprisingly helpful to me :) )
-
-
-
-
-
 
