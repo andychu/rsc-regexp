@@ -7,12 +7,13 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
+### Tools
+
 make-venv() {
   local dir=_tmp/venv
   mkdir -p $dir
   python3 -m venv $dir
 }
-
 
 install() {
   . _tmp/venv/bin/activate
@@ -31,12 +32,95 @@ format() {
   yapf -i py/nfa.py
 }
 
+### Benchmark
+
+repeat() {
+  local s=$1
+  local n=$2
+
+  for i in $(seq $n); do
+    echo -n "$s"
+  done
+}
+
+# from blog-code/regular-languages
+pattern() {
+  local n=$1
+
+  # a?^n a^n
+  repeat 'a?' $n
+  repeat 'a' $n
+  echo
+}
+
+match-text() {
+  local n=$1
+  repeat a $n
+  echo
+}
+
+py-match() {
+  local pat=$1
+  local text=$2
+  python3 -c 'import re, sys; print(re.match(sys.argv[1], sys.argv[2]))' "$pat" "$text"
+}
+
+pynfa-match() {
+  py/nfa.py match "$@"
+}
+
+nodejs-match() {
+  nodejs -e 'console.log(new RegExp(process.argv[1]).exec(process.argv[2]))' "$@"
+}
+
+compare() {
+  local impl=${1:-py}
+  local n=${2:-25}
+
+  local pat
+  pat=$(pattern $n)
+
+  local text
+  text=$(match-text $n)
+
+  echo
+  echo 'Backtrack and succeed'
+  time $impl-match "$pat" "$text"
+
+  echo
+  echo 'Backtrack and fail'
+  time $impl-match "${pat}$" "${text}z"
+
+  # nodejs still backtracks here!
+  echo
+  echo 'Fail without backtracking'
+  local nomatch="${text::-1}"
+  #echo nomatch=$nomatch
+
+  time $impl-match "$pat" "$nomatch"
+
+  #time perl -e 'print "hi"';
+
+  # 157 ms
+  #time nodejs -e 'console.log("hi")';
+}
+
+compare-all() {
+  #compare-py
+
+  compare pynfa 
+}
+
+readonly regex='.*,.*,.*,.*'
+
+
+
+### Tests
 
 parse() {
   py/nfa.py parse 'a|b'
 }
 
-# TODO: reuse existing test cases
 readonly -a CASES=(
   'ab'
   'a+b'
@@ -147,6 +231,8 @@ orig-tests() {
 
   ./torture-test original/nfa
 }
+
+### git stuff
 
 test-py() {
   ./test py/nfa.py match

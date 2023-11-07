@@ -424,14 +424,16 @@ def main(argv):
             print('bad regexp')  # for ./test harness
             raise RuntimeError('Syntax error in %r' % pat)
 
-        if 1:
+        DEBUG = False
+        if DEBUG:
             print(p)
 
         nfa = post2nfa(p)
         if nfa is None:
             raise RuntimeError('Error in post2nfa')
 
-        if 1:
+        # Exponential blowup in printing?
+        if DEBUG:
             print(nfa)
 
         # Print the string if it matches, like the original
