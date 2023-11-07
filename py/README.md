@@ -8,7 +8,7 @@ Thanks to BurntSushi for nerd-sniping me:
 ## What I did
 
 - Copy `re2post()`, and massage it into Python.  It was actually easier to copy
-  the Rust version than the C version!
+  the Rust version than the C version, although I referred to both.
 - Figure out the skeleton of `post2nfa()`.  I then realized that using
   **typed** Python and "algebraic data types" would be easier.
   - For example, the C code uses `.` as the concat operator, but this leads to
@@ -90,10 +90,12 @@ rather than C vs. Rust.
 
 ## Code Snippets
 
+I'm copying the code here, before adding more features.
+
 Python clarified the algorithm for me!  For the usual reason that it looks like
 "executable pseudo-code".
 
----
+### Python Morphed into ML Dialect (a bit like TypeScript)
 
 These examples alsow show that Python has gradually turned into an ML dialect--
 not just with `Union` types, but also `match case`!
@@ -104,8 +106,6 @@ October 2021, and MyPy support came even later.
 (Related note below on Union vs. sum types.)
 
 ---
-
-I'm copying the code here, before adding more features.
 
 ### post2fa
 
