@@ -17,37 +17,43 @@ Thanks to BurntSushi for nerd-sniping me:
 
 I used Python 3 `dataclass` and `Union` type, statically checked by MyPy:
 
-    @dataclass
-    class Byte:
-        """ 0-255, so we can do Unicode later """
-        c: int
+```python
+@dataclass
+class Byte:
+    """ 0-255, so we can do Unicode later """
+    c: int
 
-    @dataclass
-    class Cat:
-        """ ab """
-        pass
+@dataclass
+class Cat:
+    """ ab """
+    pass
 
-    # ...
+# ...
 
-    op = Union[Byte, Repeat, Alt, Cat, Dot]
+op = Union[Byte, Repeat, Alt, Cat, Dot]
+```
 
 It definitely **looks** ugly and verbose, compared to Zephyr ASDL, which we
 use in Oils.  In ASDL, it's:
 
-    op =
-      Byte(int c)     # translate escapes like \\ and \. to this
-    | Repeat(str op)  # + * ?
-    | Cat
-    | Alt
+```ocaml
+op =
+  Byte(int c)     # translate escapes like \\ and \. to this
+| Repeat(str op)  # + * ?
+| Cat
+| Alt
+```
 
 The sum type in the Rust code also helped a lot!  It matches the explanation of
 the algorithm **much** more closely than the C codes does.
 
-    enum State {
-        Literal { byte: u8, out: StateID },
-        Split { out1: StateID, out2: StateID },
-        Match,
-    }
+```rust
+enum State {
+    Literal { byte: u8, out: StateID },
+    Split { out1: StateID, out2: StateID },
+    Match,
+}
+```
 
 - Combine the NFA simulation into fewer function (see below).  It's simpler if
   you don't have to worry about efficiency or memory management.
