@@ -75,7 +75,7 @@ merge-to-staging() {
   if test "$do_push" = T; then
     git checkout master &&
     git merge $branch &&
-    git push &&
+    git push andychu &&
     git checkout $branch
   else
     git checkout master &&
