@@ -339,6 +339,7 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
 def addstate(nlist: Dict[int, State], st: Optional[State]):
     if st is None:
         return
+
     match st:
         case Split(out1, out2):
             # follow unlabeled arrows
