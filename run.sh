@@ -68,6 +68,20 @@ post2nfa() {
   done
 }
 
+match() {
+  py/nfa.py match a a
+  py/nfa.py match 'a|b' a
+  py/nfa.py match 'a|b' b
+
+  return
+
+  for pat in "${CASES[@]}"; do
+    echo "$pat"
+    py/nfa.py match "$pat" a
+    echo
+  done
+}
+
 log-staging() {
   ### log: for working with the merge bot
   git log master..

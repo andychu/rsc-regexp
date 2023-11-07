@@ -3,42 +3,45 @@
 nfa.py
 """
 
-import os
 import re
 import sys
 
 from dataclasses import dataclass
-from typing import Optional, List, Set, Tuple, Union, Optional
+from typing import Optional, Dict, List, Set, Tuple, Union, Optional
 
-# TODO:
-"""
-pat: string, but assert that code point is < 256
 
-" ([^\"] | \\ . ) "
+def log(msg, *args):
+    if args:
+        msg = msg % args
+    print(msg, file=sys.stderr)
 
-class_item = 
-  Byte(int c)
-| Range(int start, int end)
-
-op =
-  Byte(int c)  # escapes like \\ and \. are translated to this
-| Plus
-| Star
-| QMark
-| Cat
-
-  # What we're adding
-| Dot
-| CharClass(bool negated, List[class_item] items)
-
-TODO:
-
-- UTF-8 can be compiled to an alternation of 1, 2, 3, or 4 CharClass
-
-"""
 
 # All this dataclass boilerplate pains me after using Zephyr ASDL, but let's
 # keep it "stock".
+"""
+pat: string, but assert that code point is < 256
+
+    " ([^\"] | \\ . ) "
+
+Postfix operations:
+
+    op =
+      Byte(int c)  # escapes like \\ and \. are translated to this
+    | Dot
+
+    | Repeat(str op)  # + * ?
+    | Cat
+    | Alt
+
+    | CharClass(bool negated, List[class_item] items)
+
+    class_item = 
+      Byte(int c)
+    | Range(int start, int end)
+
+TODO:
+- UTF-8 can be compiled to an alternation of 1, 2, 3, or 4 CharClass
+"""
 
 
 @dataclass
@@ -79,7 +82,7 @@ class CharClass:
 
 
 @dataclass
-class CharRange:
+class Range:
     """ [a-z] 
 
     ByteRange or CharRange?
@@ -88,75 +91,9 @@ class CharRange:
     end: int
 
 
-class_item = Union[Byte, CharRange]
+class_item = Union[Byte, Range]
 
-
-@dataclass
-class Plus:
-    pass
-
-
-@dataclass
-class Star:
-    pass
-
-
-@dataclass
-class QMark:
-    pass
-
-
-op = Union[Byte, Repeat, Plus, Star, QMark, Alt, Cat, Dot]
-
-### Second step
-
-# Note: Set[State] is linked the linked list union Ptrlist
-
-
-@dataclass
-class Literal:
-    c: int
-    out: Optional['State']
-
-
-@dataclass
-class Split:
-    out1: 'State'
-    out2: Optional['State']
-
-
-@dataclass
-class Match:
-    pass
-
-
-State = Union[Literal, Split, Match]
-
-
-@dataclass
-class Out1:
-    st: State
-
-
-@dataclass
-class Out2:
-    st: State
-
-
-ToPatch = Union[Out1, Out2]
-
-
-@dataclass
-class Frag:
-    """
-    A partially built NFA without the matching state filled in.
-
-    - Frag.start points at the start state.
-    - Frag.out is a list of places that need to be set to the next state for
-      this fragment.
-    """
-    start: State
-    out: List[ToPatch]
+op = Union[Byte, Repeat, Alt, Cat, Dot]
 
 
 def re2post(pat: str) -> Optional[List[op]]:
@@ -253,6 +190,57 @@ def re2post(pat: str) -> Optional[List[op]]:
     return dst
 
 
+### Second step
+
+# Note: Set[State] is linked the linked list union Ptrlist
+
+
+@dataclass
+class Literal:
+    c: int
+    out: Optional['State']
+
+
+@dataclass
+class Split:
+    out1: 'State'
+    out2: Optional['State']
+
+
+@dataclass
+class Match:
+    pass
+
+
+State = Union[Literal, Split, Match]
+
+
+@dataclass
+class Out1:
+    st: State
+
+
+@dataclass
+class Out2:
+    st: State
+
+
+ToPatch = Union[Out1, Out2]
+
+
+@dataclass
+class Frag:
+    """
+    A partially built NFA without the matching state filled in.
+
+    - Frag.start points at the start state.
+    - Frag.out is a list of places that need to be set to the next state for
+      this fragment.
+    """
+    start: State
+    out: List[ToPatch]
+
+
 def Patch(patches: List[ToPatch], st: State):
     for p in patches:
         match p:
@@ -315,13 +303,13 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
                 stack.append(Frag(st_lit, out))
 
             case Dot():
-                raise NotImplementedError()
+                raise NotImplementedError('Dot')
 
             case CharClass(negated, items):
-                raise NotImplementedError()
+                raise NotImplementedError('CharClass')
 
             case _:
-                raise RuntimeError()
+                raise RuntimeError('oops')
 
     e = stack.pop()
     if len(stack) != 0:
@@ -331,6 +319,57 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
     Patch(e.out, st_match)
 
     return e.start
+
+
+def addstate(nlist: Dict[int, State], st: State):
+    match st:
+        case Split(out1, out2):
+            # follow unlabeled arrows
+            addstate(nlist, out1)
+
+            # For MyPy null checking
+            assert out2 is not None, 'oops'
+            addstate(nlist, out2)
+            return
+    nlist[id(st)] = st
+
+
+def match(start: State, s: str) -> bool:
+    to_match = s.encode('utf-8')
+
+    # dataclass instances aren't not hashable because they're mutable.  So use
+    # object IDs
+    clist: Dict[int, State] = {}
+    nlist: Dict[int, State] = {}
+
+    addstate(nlist, start)
+    clist, nlist = nlist, clist
+
+    #log('CLIST 0 %s', clist)
+    #log('NLIST 0 %s', nlist)
+
+    for b in to_match:
+        #print(b)
+        for _, st in clist.items():
+            #print('st %s' % st)
+            match st:
+                case Literal(c, out):
+                    #log('b %d c %d', b , c)
+                    if b == c:
+                        assert st.out is not None, 'oops'
+                        addstate(nlist, st.out)
+                case Split(c):
+                    pass
+
+        clist, nlist = nlist, clist
+        #log('CLIST 1 %s', clist)
+
+    for _, st in clist.items():
+        match st:
+            case Match():
+                return True
+
+    return False
 
 
 def main(argv):
@@ -364,6 +403,29 @@ def main(argv):
 
         print(nfa)
 
+    elif action == 'match':
+        p = re2post(pat)
+        if p is None:
+            raise RuntimeError('Syntax error')
+
+        if 1:
+            print(p)
+
+        nfa = post2nfa(p)
+        if nfa is None:
+            raise RuntimeError('Error in post2nfa')
+
+        if 1:
+            print(nfa)
+
+        # Print the string if it matches, like the original
+        s = argv[3]
+        if 1:
+            print('Matching %r' % s)
+
+        if match(nfa, s):
+            print(s)
+
     else:
         raise RuntimeError('Invalid action %r' % action)
 
@@ -374,401 +436,3 @@ if __name__ == '__main__':
     except RuntimeError as e:
         print('FATAL: %s' % e, file=sys.stderr)
         sys.exit(1)
-"""
-/*
- * Regular expression implementation.
- * Supports only ( | ) * + ?.  No escapes.
- * Compiles to NFA and then simulates NFA
- * using Thompson's algorithm.
- *
- * See also http://swtch.com/~rsc/regexp/ and
- * Thompson, Ken.  Regular Expression Search Algorithm,
- * Communications of the ACM 11(6) (June 1968), pp. 419-422.
- *
- * Copyright (c) 2007 Russ Cox.
- * Can be distributed under the MIT license, see bottom of file.
- */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-/*
- * Convert infix regexp re to postfix notation.
- * Insert . as explicit concatenation operator.
- * Cheesy parser, return static buffer.
- */
-char*
-re2post(char *re)
-{
-	int nalt, natom;
-	static char buf[8000];
-	char *dst;
-	struct {
-		int nalt;
-		int natom;
-	} paren[100], *p;
-
-	p = paren;
-	dst = buf;
-	nalt = 0;
-	natom = 0;
-	if(strlen(re) >= sizeof buf/2)
-		return NULL;
-	for(; *re; re++){
-		switch(*re){
-		case '(':
-			if(natom > 1){
-				--natom;
-				*dst++ = '.';
-			}
-			if(p >= paren+100)
-				return NULL;
-			p->nalt = nalt;
-			p->natom = natom;
-			p++;
-			nalt = 0;
-			natom = 0;
-			break;
-		case '|':
-			if(natom == 0)
-				return NULL;
-			while(--natom > 0)
-				*dst++ = '.';
-			nalt++;
-			break;
-		case ')':
-			if(p == paren)
-				return NULL;
-			if(natom == 0)
-				return NULL;
-			while(--natom > 0)
-				*dst++ = '.';
-			for(; nalt > 0; nalt--)
-				*dst++ = '|';
-			--p;
-			nalt = p->nalt;
-			natom = p->natom;
-			natom++;
-			break;
-		case '*':
-		case '+':
-		case '?':
-			if(natom == 0)
-				return NULL;
-			*dst++ = *re;
-			break;
-		default:
-			if(natom > 1){
-				--natom;
-				*dst++ = '.';
-			}
-			*dst++ = *re;
-			natom++;
-			break;
-		}
-	}
-	if(p != paren)
-		return NULL;
-	while(--natom > 0)
-		*dst++ = '.';
-	for(; nalt > 0; nalt--)
-		*dst++ = '|';
-	*dst = 0;
-	return buf;
-}
-
-/*
- * Represents an NFA state plus zero or one or two arrows exiting.
- * if c == Match, no arrows out; matching state.
- * If c == Split, unlabeled arrows to out and out1 (if != NULL).
- * If c < 256, labeled arrow with character c to out.
- */
-enum
-{
-	Match = 256,
-	Split = 257
-};
-typedef struct State State;
-struct State
-{
-	int c;
-	State *out;
-	State *out1;
-	int lastlist;
-};
-State matchstate = { Match };	/* matching state */
-int nstate;
-
-/* Allocate and initialize State */
-State*
-state(int c, State *out, State *out1)
-{
-	State *s;
-
-	nstate++;
-	s = malloc(sizeof *s);
-	s->lastlist = 0;
-	s->c = c;
-	s->out = out;
-	s->out1 = out1;
-	return s;
-}
-
-/*
- * A partially built NFA without the matching state filled in.
- * Frag.start points at the start state.
- * Frag.out is a list of places that need to be set to the
- * next state for this fragment.
- */
-typedef struct Frag Frag;
-typedef union Ptrlist Ptrlist;
-struct Frag
-{
-	State *start;
-	Ptrlist *out;
-};
-
-/* Initialize Frag struct. */
-Frag
-frag(State *start, Ptrlist *out)
-{
-	Frag n = { start, out };
-	return n;
-}
-
-/*
- * Since the out pointers in the list are always
- * uninitialized, we use the pointers themselves
- * as storage for the Ptrlists.
- */
-union Ptrlist
-{
-	Ptrlist *next;
-	State *s;
-};
-
-/* Create singleton list containing just outp. */
-Ptrlist*
-list1(State **outp)
-{
-	Ptrlist *l;
-
-	l = (Ptrlist*)outp;
-	l->next = NULL;
-	return l;
-}
-
-/* Patch the list of states at out to point to start. */
-void
-patch(Ptrlist *l, State *s)
-{
-	Ptrlist *next;
-
-	for(; l; l=next){
-		next = l->next;
-		l->s = s;
-	}
-}
-
-/* Join the two lists l1 and l2, returning the combination. */
-Ptrlist*
-append(Ptrlist *l1, Ptrlist *l2)
-{
-	Ptrlist *oldl1;
-
-	oldl1 = l1;
-	while(l1->next)
-		l1 = l1->next;
-	l1->next = l2;
-	return oldl1;
-}
-
-/*
- * Convert postfix regular expression to NFA.
- * Return start state.
- */
-State*
-post2nfa(char *postfix)
-{
-	char *p;
-	Frag stack[1000], *stackp, e1, e2, e;
-	State *s;
-
-	// fprintf(stderr, "postfix: %s\n", postfix);
-
-	if(postfix == NULL)
-		return NULL;
-
-	#define push(s) *stackp++ = s
-	#define pop() *--stackp
-
-	stackp = stack;
-	for(p=postfix; *p; p++){
-		switch(*p){
-		default:
-			s = state(*p, NULL, NULL);
-			push(frag(s, list1(&s->out)));
-			break;
-		case '.':	/* catenate */
-			e2 = pop();
-			e1 = pop();
-			patch(e1.out, e2.start);
-			push(frag(e1.start, e2.out));
-			break;
-		case '|':	/* alternate */
-			e2 = pop();
-			e1 = pop();
-			s = state(Split, e1.start, e2.start);
-			push(frag(s, append(e1.out, e2.out)));
-			break;
-		case '?':	/* zero or one */
-			e = pop();
-			s = state(Split, e.start, NULL);
-			push(frag(s, append(e.out, list1(&s->out1))));
-			break;
-		case '*':	/* zero or more */
-			e = pop();
-			s = state(Split, e.start, NULL);
-			patch(e.out, s);
-			push(frag(s, list1(&s->out1)));
-			break;
-		case '+':	/* one or more */
-			e = pop();
-			s = state(Split, e.start, NULL);
-			patch(e.out, s);
-			push(frag(e.start, list1(&s->out1)));
-			break;
-		}
-	}
-
-	e = pop();
-	if(stackp != stack)
-		return NULL;
-
-	patch(e.out, &matchstate);
-	return e.start;
-#undef pop
-#undef push
-}
-
-typedef struct List List;
-struct List
-{
-	State **s;
-	int n;
-};
-List l1, l2;
-static int listid;
-
-void addstate(List*, State*);
-void step(List*, int, List*);
-
-/* Compute initial state list */
-List*
-startlist(State *start, List *l)
-{
-	l->n = 0;
-	listid++;
-	addstate(l, start);
-	return l;
-}
-
-/* Check whether state list contains a match. */
-int
-ismatch(List *l)
-{
-	int i;
-
-	for(i=0; i<l->n; i++)
-		if(l->s[i] == &matchstate)
-			return 1;
-	return 0;
-}
-
-/* Add s to l, following unlabeled arrows. */
-void
-addstate(List *l, State *s)
-{
-	if(s == NULL || s->lastlist == listid)
-		return;
-	s->lastlist = listid;
-	if(s->c == Split){
-		/* follow unlabeled arrows */
-		addstate(l, s->out);
-		addstate(l, s->out1);
-		return;
-	}
-	l->s[l->n++] = s;
-}
-
-/*
- * Step the NFA from the states in clist
- * past the character c,
- * to create next NFA state set nlist.
- */
-void
-step(List *clist, int c, List *nlist)
-{
-	int i;
-	State *s;
-
-	listid++;
-	nlist->n = 0;
-	for(i=0; i<clist->n; i++){
-		s = clist->s[i];
-		if(s->c == c)
-			addstate(nlist, s->out);
-	}
-}
-
-/* Run NFA to determine whether it matches s. */
-int
-match(State *start, char *s)
-{
-	int i, c;
-	List *clist, *nlist, *t;
-
-	clist = startlist(start, &l1);
-	nlist = &l2;
-	for(; *s; s++){
-		c = *s & 0xFF;
-		step(clist, c, nlist);
-		t = clist; clist = nlist; nlist = t;	/* swap clist, nlist */
-	}
-	return ismatch(clist);
-}
-
-int
-main(int argc, char **argv)
-{
-	int i;
-	char *post;
-	State *start;
-
-	if(argc < 3){
-		fprintf(stderr, "usage: nfa regexp string...\n");
-		return 1;
-	}
-
-	post = re2post(argv[1]);
-	if(post == NULL){
-		fprintf(stderr, "bad regexp %s\n", argv[1]);
-		return 1;
-	}
-
-	start = post2nfa(post);
-	if(start == NULL){
-		fprintf(stderr, "error in post2nfa %s\n", post);
-		return 1;
-	}
-
-	l1.s = malloc(nstate*sizeof l1.s[0]);
-	l2.s = malloc(nstate*sizeof l2.s[0]);
-	for(i=2; i<argc; i++)
-		if(match(start, argv[i]))
-			printf("%s\n", argv[i]);
-	return 0;
-}
-
- """
