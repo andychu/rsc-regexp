@@ -277,6 +277,7 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
                 e2 = stack.pop()
                 e1 = stack.pop()
                 st = Split(e1.start, e2.start)
+                e1.out.extend(e2.out)
                 stack.append(Frag(st, e1.out))
 
             case Repeat(op):
@@ -321,14 +322,13 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
     return e.start
 
 
-def addstate(nlist: Dict[int, State], st: State):
+def addstate(nlist: Dict[int, State], st: Optional[State]):
+    if st is None:
+        return
     match st:
         case Split(out1, out2):
             # follow unlabeled arrows
             addstate(nlist, out1)
-
-            # For MyPy null checking
-            assert out2 is not None, 'oops'
             addstate(nlist, out2)
             return
     nlist[id(st)] = st
@@ -350,21 +350,21 @@ def match(start: State, s: str) -> bool:
 
     for b in to_match:
         #print(b)
-        for _, st in clist.items():
+        for st in clist.values():
             #print('st %s' % st)
             match st:
                 case Literal(c, out):
                     #log('b %d c %d', b , c)
                     if b == c:
-                        assert st.out is not None, 'oops'
                         addstate(nlist, st.out)
                 case Split(c):
                     pass
 
         clist, nlist = nlist, clist
+        nlist.clear()
         #log('CLIST 1 %s', clist)
 
-    for _, st in clist.items():
+    for st in clist.values():
         match st:
             case Match():
                 return True
@@ -425,6 +425,9 @@ def main(argv):
 
         if match(nfa, s):
             print(s)
+        else:
+            print('NOPE')
+            pass
 
     else:
         raise RuntimeError('Invalid action %r' % action)

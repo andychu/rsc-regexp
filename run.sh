@@ -68,10 +68,48 @@ post2nfa() {
   done
 }
 
+match-case() {
+  echo "  $1  $2"
+  py/nfa.py match "$@"
+  echo
+}
+
 match() {
-  py/nfa.py match a a
-  py/nfa.py match 'a|b' a
-  py/nfa.py match 'a|b' b
+
+  match-case 'a' a
+  match-case 'a|b' a
+  match-case 'a|b' b
+  match-case 'a|b' c
+
+  match-case 'ab' a
+  match-case 'ab' ab
+  match-case 'ab' abc
+
+  match-case 'a*' ''
+  match-case 'a*' a
+  match-case 'a*' aa
+
+  match-case 'a+' ''
+  match-case 'a+' a
+  match-case 'a+' aa
+
+  match-case 'a?' ''
+  match-case 'a?' a
+  match-case 'a?' aa
+
+  match-case 'a(b|c)d' abcd
+  match-case 'a(b|c)d' abd
+  match-case 'a(b|c)d' acd
+  match-case 'a(b|c)d' ad
+
+  match-case 'a(b|c)*d' abbd
+  match-case 'a(b|c)*d' accd
+  match-case 'a(b|c)*d' acbcbbccd
+  match-case 'a(b|c)*d' ad
+  match-case 'a(b|c)*d' a
+  match-case 'a(b|c)*d' dad
+
+
 
   return
 
