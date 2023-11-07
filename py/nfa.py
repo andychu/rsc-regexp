@@ -8,7 +8,7 @@ import re
 import sys
 
 from dataclasses import dataclass
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Set, Tuple, Union, Optional
 
 # TODO:
 """
@@ -37,15 +37,58 @@ TODO:
 
 """
 
+# All this dataclass boilerplate pains me after using Zephyr ASDL, but let's
+# keep it "stock".
+
 
 @dataclass
 class Byte:
+    """ 0-255, so we can do Unicode later """
     c: int
 
 
 @dataclass
+class Dot:
+    """ .* """
+    pass
+
+
+@dataclass
 class Repeat:
+    """ + * ? """
     s: str
+
+
+@dataclass
+class Alt:
+    """ a|b """
+    pass
+
+
+@dataclass
+class Cat:
+    """ ab """
+    pass
+
+
+@dataclass
+class CharClass:
+    """ [^"\] """
+    negated: bool
+    items: List['class_item']
+
+
+@dataclass
+class CharRange:
+    """ [a-z] 
+
+    ByteRange or CharRange?
+    """
+    start: int
+    end: int
+
+
+class_item = Union[Byte, CharRange]
 
 
 @dataclass
@@ -63,22 +106,77 @@ class QMark:
     pass
 
 
-@dataclass
-class Alt:
-    pass
-
-
-@dataclass
-class Cat:
-    pass
-
-
-@dataclass
-class Dot:
-    pass
-
-
 op = Union[Byte, Repeat, Plus, Star, QMark, Alt, Cat, Dot]
+
+### Second step
+
+# Note: Set[State] is linked the linked list union Ptrlist
+
+
+@dataclass
+class Literal:
+    c: int
+    out: Set['State']
+
+
+@dataclass
+class Split:
+    out1: Set['State']
+    out2: Set['State']
+
+
+@dataclass
+class Match:
+    pass
+
+
+State = Union[Literal, Split, Match]
+
+
+@dataclass
+class Out1:
+    st: State
+
+
+@dataclass
+class Out2:
+    st: State
+
+
+ToPatch = Union[Out1, Out2]
+
+
+@dataclass
+class Frag:
+    """
+    A partially built NFA without the matching state filled in.
+
+    - Frag.start points at the start state.
+    - Frag.out is a list of places that need to be set to the next state for
+      this fragment.
+    """
+    start: State
+    out: Optional[Set['State']]  # Is this right?
+
+
+def Patch(to_patch: List[ToPatch], to: State):
+    for p in to_patch:
+        match p:
+            case Out1(st):
+                match to:
+                    case Literal(_, out):
+                        out.add(to)
+                    case Split(_, out1):
+                        out1.add(to)
+                    case _:
+                        raise RuntimeError('Invalid')
+
+            case Out2(st):
+                match to:
+                    case Split(_, out2):
+                        out2.add(to)
+                    case _:
+                        raise RuntimeError('Invalid')
 
 
 def re2post(pat: str) -> Optional[List[op]]:
@@ -175,6 +273,42 @@ def re2post(pat: str) -> Optional[List[op]]:
     return dst
 
 
+def post2nfa(postfix: List[op]) -> Frag:
+
+    stack: List[Frag] = []
+
+    for p in postfix:
+        match p:
+            case Byte(c):
+                pass
+
+            case Dot():
+                pass
+
+            case CharClass(negated, items):
+                pass
+
+            case Cat():
+                pass
+
+            case Alt():
+                pass
+
+            case Repeat(op):
+                if op == '?':
+                    pass
+                elif op == '*':
+                    pass
+                elif op == '+':
+                    pass
+
+            case _:
+                raise RuntimeError()
+
+    e = Frag(Match(), None)
+    return e
+
+
 def main(argv):
 
     action = argv[1]
@@ -194,6 +328,14 @@ def main(argv):
         p = re2post(pat)
         print(p)
         #print(''.join(p))
+
+    elif action == 'post2nfa':
+        p = re2post(pat)
+        if p is None:
+            raise RuntimeError('Syntax error')
+
+        nfa = post2nfa(p)
+        print(nfa)
 
     else:
         raise RuntimeError('Invalid action %r' % action)

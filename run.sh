@@ -44,6 +44,11 @@ readonly -a CASES=(
   '((ab)?c)'
   '.*'
   '..'
+
+  # syntax error
+  '|a'
+  'a|b|'
+  '+'
 )
 
 # TODO: reuse existing test cases
