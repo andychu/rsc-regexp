@@ -15,7 +15,7 @@ Thanks to BurntSushi for nerd-sniping me:
     confusion with "any char".  So our postfix encoding has typed data, not
     just bytes.
 
-I used Python 3 `dataclass` and `Union` type.
+I used Python 3 `dataclass` and `Union` type, statically checked by MyPy:
 
     @dataclass
     class Byte:
@@ -49,16 +49,15 @@ the algorithm **much** more closely than the C codes does.
         Match,
     }
 
-- Combine the NFA simulation into one function (see below).  It's a lot simpler
-  if you don't have to worry about efficiency or memory management.
+- Combine the NFA simulation into fewer function (see below).  It's simpler if
+  you don't have to worry about efficiency or memory management.
   - The state "lists" are represented as a Python `Dict[int, State]`, because
     `set()` can only contain hashable values, and `dataclass` instances aren't
     hashable unless `frozen=True`.
 
 The `py/nfa.py` file now **passes original tests**, except the `a.b` test,
-which is intentional.
-
-We're interpreting `.` in the traditional way (any char).
+which is intentional.  We're interpreting `.` in the traditional way (any
+char).
 
 ## I Read the Rust Code
 
@@ -73,31 +72,33 @@ I found myself referring to the Rust code more!  The strong types help.
 (I recently started a new `micro-syntax` program in C, but quickly upgraded it
 to C++, for the same reason.)
 
-I find that "typing in" algorithms is a good first pass toward understanding
-them.
+---
 
-This is a pretty fun algorithm.  I would easy it's a little "meatier" than a
-tracing GC, which is the another graph-based algorithm I've worked with
-recently.
+I find that physically typing in algorithms is a good first pass toward
+understanding them.
 
-## Comments on Ownership
+This is a fun algorithm.  I would say it's a little "meatier" than a tracing
+GC, which is the another graph-based algorithm I've worked with recently.
+
+## Comments on Ownership / Memory Management
 
 This was the original motivation for the experiment.  But I don't really have
 any comments now -- I was mainly trying to understand the algorithm first!
 
 I would say that greater difference is between GC'd Python vs. C or Rust,
-rather than C vs. Rust.  (See code below)
-
+rather than C vs. Rust.
 
 ## Code Snippets
 
-Python clarified the algorithm for me!  I think it turned out much simpler than
-C or Rust (although obviously much slower)
+Python clarified the algorithm for me!  For the usual reason that it looks like
+"executable pseudo-code".
 
-These examples clearly show that Python has gradually turned into an ML
-dialect.  Not just with `Union` types, but also `match case`!
+---
 
-Support for this is very recent -- `match case` is from Python 3.10 as of
+These examples alsow show that Python has gradually turned into an ML dialect--
+not just with `Union` types, but also `match case`!
+
+These language features are recent -- `match case` is from Python 3.10 as of
 October 2021, and MyPy support came even later.
 
 (Related note below on Union vs. sum types.)
