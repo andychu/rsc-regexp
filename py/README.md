@@ -219,13 +219,15 @@ def match(start: State, s: str) -> bool:
     return False
 ```
 
-## Related Rant
+## Related: Union types vs. Sum Types
 
-Though union types vs. sum types doesn't come up here, it may come up later if
-we do character classes, and possibly `.`.
+The issue of union types vs. sum types doesn't really come up in this code.
+Though it's starting to with `.` metacharacter support, and possibly char
+classes `[^"\]`.
 
-I wrote a comment about how Union types in TypeScript / MyPy / Zephyr ASDL are
-more powerful than sum types for representing languages:
+Here's a comment about something I leared the hard way - Union types in
+TypeScript / MyPy / Zephyr ASDL are more natural than sum types for
+representing languages:
 
 - <https://lobste.rs/s/tpe028/on_learning_compilers_creating#c_n8svhu> (on
   OCaml and the `Bool Int` smell)
@@ -234,4 +236,32 @@ more powerful than sum types for representing languages:
   surprisingly OK.  MyPy is similarly OK!
   - They both feel cobbled together and ugly in spots, but they work, and have
     some advantages.
+
+### Speed is Necessary
+
+The main problem is that they're not fast enough:
+
+- <https://news.ycombinator.com/item?id=35045520>
+
+Which is another point for Rust.
+
+As mentioned, I definitely prefer the Rust to C, especially to make this
+production quality.  A C++ port would be interesting, but I actually want to
+explore regex algorithms (DFAs, derivatives), more than the implementation
+language.
+
+I will probably do a few more experiments in Python, e.g. with
+
+- <https://github.com/darius/regexercise_solutions/tree/master>
+
+Which I mentioned back in 2020:
+
+- <http://www.oilshell.org/blog/2020/07/ideas-questions.html#regular-expression-derivatives-papers-and-code>
+
+(I forgot about all these links, and they were surprisingly helpful to me :) )
+
+
+
+
+
 
