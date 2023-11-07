@@ -10,11 +10,26 @@ Thanks to BurntSushi for nerd-sniping me:
 - Copy `re2post()`, and massage it into Python.  It was actually easier to copy
   the Rust version than the C version!
 - Figure out the skeleton of `post2nfa()`.  I then realized that using
-  "algebraic data types" and **typed** Python would be easier.
-  - The C code uses `.` as the concat operator, but this leads to confusion
-    with "any char".  So our postfix encoding has typed data, not just bytes.
+  **typed** Python and "algebraic data types" would be easier.
+  - For example, the C code uses `.` as the concat operator, but this leads to
+    confusion with "any char".  So our postfix encoding has typed data, not
+    just bytes.
 
 I used Python 3 `dataclass` and `Union` type.
+
+    @dataclass
+    class Byte:
+        """ 0-255, so we can do Unicode later """
+        c: int
+
+    @dataclass
+    class Cat:
+        """ ab """
+        pass
+
+    # ...
+
+    op = Union[Byte, Repeat, Alt, Cat, Dot]
 
 It definitely **looks** ugly and verbose, compared to Zephyr ASDL, which we
 use in Oils.  In ASDL, it's:
