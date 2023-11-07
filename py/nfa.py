@@ -116,13 +116,13 @@ op = Union[Byte, Repeat, Plus, Star, QMark, Alt, Cat, Dot]
 @dataclass
 class Literal:
     c: int
-    out: Set['State']
+    out: Optional['State']
 
 
 @dataclass
 class Split:
-    out1: Set['State']
-    out2: Set['State']
+    out1: 'State'
+    out2: Optional['State']
 
 
 @dataclass
@@ -156,27 +156,7 @@ class Frag:
       this fragment.
     """
     start: State
-    out: Optional[Set['State']]  # Is this right?
-
-
-def Patch(to_patch: List[ToPatch], to: State):
-    for p in to_patch:
-        match p:
-            case Out1(st):
-                match to:
-                    case Literal(_, out):
-                        out.add(to)
-                    case Split(_, out1):
-                        out1.add(to)
-                    case _:
-                        raise RuntimeError('Invalid')
-
-            case Out2(st):
-                match to:
-                    case Split(_, out2):
-                        out2.add(to)
-                    case _:
-                        raise RuntimeError('Invalid')
+    out: List[ToPatch]
 
 
 def re2post(pat: str) -> Optional[List[op]]:
@@ -273,40 +253,84 @@ def re2post(pat: str) -> Optional[List[op]]:
     return dst
 
 
-def post2nfa(postfix: List[op]) -> Frag:
+def Patch(patches: List[ToPatch], st: State):
+    for p in patches:
+        match p:
+            case Out1(to_patch):
+                match to_patch:
+                    case Literal(_, _):
+                        to_patch.out = st
+                    case Split(_, _):
+                        to_patch.out1 = st
+                    case _:
+                        raise RuntimeError('Invalid')
+
+            case Out2(to_patch):
+                match to_patch:
+                    case Split(_, _):
+                        to_patch.out2 = st
+                    case _:
+                        raise RuntimeError('Invalid')
+
+
+def post2nfa(postfix: List[op]) -> Optional[State]:
 
     stack: List[Frag] = []
 
     for p in postfix:
         match p:
-            case Byte(c):
-                pass
-
-            case Dot():
-                pass
-
-            case CharClass(negated, items):
-                pass
-
             case Cat():
-                pass
+                e2 = stack.pop()
+                e1 = stack.pop()
+                Patch(e1.out, e2.start)
+                stack.append(Frag(e1.start, e2.out))
 
             case Alt():
-                pass
+                e2 = stack.pop()
+                e1 = stack.pop()
+                st = Split(e1.start, e2.start)
+                stack.append(Frag(st, e1.out))
 
             case Repeat(op):
+                e = stack.pop()
+                st = Split(e.start, None)
+
                 if op == '?':
-                    pass
+                    e.out.append(Out2(st))
+                    stack.append(Frag(st, e.out))
+
                 elif op == '*':
-                    pass
+                    Patch(e.out, st)
+                    out: List[ToPatch] = [Out2(st)]
+                    stack.append(Frag(st, out))
+
                 elif op == '+':
-                    pass
+                    Patch(e.out, st)
+                    out = [Out2(st)]
+                    stack.append(Frag(e.start, out))
+
+            case Byte(c):
+                st_lit = Literal(c, None)
+                out = [Out1(st_lit)]
+                stack.append(Frag(st_lit, out))
+
+            case Dot():
+                raise NotImplementedError()
+
+            case CharClass(negated, items):
+                raise NotImplementedError()
 
             case _:
                 raise RuntimeError()
 
-    e = Frag(Match(), None)
-    return e
+    e = stack.pop()
+    if len(stack) != 0:
+        return None
+
+    st_match = Match()
+    Patch(e.out, st_match)
+
+    return e.start
 
 
 def main(argv):
@@ -335,6 +359,9 @@ def main(argv):
             raise RuntimeError('Syntax error')
 
         nfa = post2nfa(p)
+        if nfa is None:
+            raise RuntimeError('Error in post2nfa')
+
         print(nfa)
 
     else:

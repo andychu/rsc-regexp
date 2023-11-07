@@ -39,3 +39,34 @@ Ideas
 
 
 
+Notes
+-----
+
+
+- re2post easier to port Rust -> Python, than C -> Python
+- algebraic data types for State are also better in Rust
+  - After years of using Zephyr ASDL, it definitely feels "missing" in Python.
+    dataclass/Union is awkard.
+    - Although dataclass also has pretty-printing, which is nice.
+  - However I still think Union (TypeScript, MyPy, ~ASDL) is better than sum
+    types / enum.  It doesn't quite come up here, other than Byte() being a
+    part of `op` and `class_item` (not in the original)
+
+- dataclass can print cyclic graphs!  Like
+
+```
+Literal(c=97, out=Split(out1=..., out2=Literal(c=98, out=Match())))
+```
+
+- Python has clearly morphed in to an ML (in ad hoc way)
+  - arguably no worse than TypeScript, which has benefits
+
+- It's taking me awhile to understand the algorithm
+  - last graph algorithm I worked with was our garbage collector, which was
+    also fun, but more "trivial" algorithmically
+
+- patch() function is longer - still need to understand this
+
+
+
+

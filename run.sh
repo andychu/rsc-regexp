@@ -36,6 +36,7 @@ parse() {
   py/nfa.py parse 'a|b'
 }
 
+# TODO: reuse existing test cases
 readonly -a CASES=(
   'ab'
   'a+b'
@@ -51,10 +52,19 @@ readonly -a CASES=(
   '+'
 )
 
-# TODO: reuse existing test cases
 re2post() {
   for pat in "${CASES[@]}"; do
+    echo "$pat"
     py/nfa.py re2post "$pat"
+    echo
+  done
+}
+
+post2nfa() {
+  for pat in "${CASES[@]}"; do
+    echo "$pat"
+    py/nfa.py post2nfa "$pat"
+    echo
   done
 }
 
