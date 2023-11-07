@@ -44,8 +44,8 @@ op =
 | Alt
 ```
 
-The sum type in the Rust code also helped a lot!  It matches the explanation of
-the algorithm **much** more closely than the C codes does.
+The sum type in the Rust code also helped a lot!  It matches the prose
+explanation of the algorithm much more closely than the C codes does.
 
 ```rust
 enum State {
