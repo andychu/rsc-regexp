@@ -7,13 +7,13 @@ Thanks to BurntSushi for nerd-sniping me:
 
 ## What I did
 
-- Copy `re2post()`, and massage it into Python.  It was actually easier to copy
-  the Rust version than the C version, although I referred to both.
-- Figure out the skeleton of `post2nfa()`.  I then realized that using
-  **typed** Python and "algebraic data types" would be easier.
-  - For example, the C code uses `.` as the concat operator, but this leads to
-    confusion with "any char".  So our postfix encoding has typed data, not
-    just bytes.
+1. Copy `re2post()`, and massage it into Python.  It was actually easier to
+   copy the Rust version than the C version, although I referred to both.
+1. Figure out the skeleton of `post2nfa()`.  I then realized that using
+   **typed** Python and "algebraic data types" would be easier.
+   - For example, the C code uses `.` as the concat operator, but this leads to
+     confusion with "any char".  So our postfix encoding has typed data, not
+     just bytes.
 
 I used Python 3 `dataclass` and `Union` type, statically checked by MyPy:
 
@@ -55,11 +55,11 @@ enum State {
 }
 ```
 
-- Combine the NFA simulation into fewer function (see below).  It's simpler if
-  you don't have to worry about efficiency or memory management.
-  - The state "lists" are represented as a Python `Dict[int, State]`, because
-    `set()` can only contain hashable values, and `dataclass` instances aren't
-    hashable unless `frozen=True`.
+3. Combine the NFA simulation into fewer function (see below).  It's simpler if
+   you don't have to worry about efficiency or memory management.
+   - The state "lists" are represented as a Python `Dict[int, State]`, because
+     `set()` can only contain hashable values, and `dataclass` instances aren't
+     hashable unless `frozen=True`.
 
 The `py/nfa.py` file now **passes original tests**, except the `a.b` test,
 which is intentional.  We're interpreting `.` in the traditional way (any
