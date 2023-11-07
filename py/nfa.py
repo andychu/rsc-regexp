@@ -131,7 +131,11 @@ def re2post(pat: str) -> Optional[List[op]]:
             nalt += 1
 
         elif ch == ')':
-            p = paren.pop()
+            try:
+                p = paren.pop()
+            except IndexError:
+                return None
+
             if natom == 0:
                 return None
 
@@ -406,7 +410,8 @@ def main(argv):
     elif action == 'match':
         p = re2post(pat)
         if p is None:
-            raise RuntimeError('Syntax error')
+            print('bad regexp')  # for ./test harness
+            raise RuntimeError('Syntax error in %r' % pat)
 
         if 1:
             print(p)

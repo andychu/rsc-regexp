@@ -109,8 +109,6 @@ match() {
   match-case 'a(b|c)*d' a
   match-case 'a(b|c)*d' dad
 
-
-
   return
 
   for pat in "${CASES[@]}"; do
@@ -118,6 +116,30 @@ match() {
     py/nfa.py match "$pat" a
     echo
   done
+}
+
+orig-tests() {
+  . ~/.cargo/env
+
+  # Hack for clang
+
+  local clang_bin
+  clang_bin=$(echo $PWD/../oil_DEPS/clang*/bin)
+
+  export PATH=$PATH:$clang_bin
+  echo PATH=$PATH
+
+  clang --version
+  #return
+
+  ./test all
+  echo
+
+  ./torture-test original/nfa
+}
+
+test-py() {
+  ./test py/nfa.py match
 }
 
 log-staging() {
