@@ -86,7 +86,7 @@ understanding them.
 This is a fun algorithm.  I would say it's a little "meatier" than a tracing
 GC, which is the another graph-based algorithm I've worked with recently.
 
-## Comments on Ownership / Memory Management
+### Ownership / Memory Management
 
 This was the original motivation for the experiment.  But I don't really have
 any comments now -- I was mainly trying to understand the algorithm first!
