@@ -93,7 +93,31 @@ class Range:
 
 class_item = Union[Byte, Range]
 
-op = Union[Byte, Repeat, Alt, Cat, Dot]
+op = Union[Byte, Repeat, Alt, Cat, Dot, CharClass]
+
+
+def ParseCharClass(pat: str, i: int) -> Tuple[op, int]:
+    """Assuming we're looking at [, parse the char class, and advance i."""
+
+    operation = CharClass(False, [])
+
+    n = len(pat)
+    i += 1
+    first_index = i  # special case for []]
+
+    while True:
+        if i >= n:
+            raise RuntimeError('Missing closing ]')
+
+        ch = pat[i]
+        if ch == ']' and i != first_index:
+            break
+
+        operation.items.append(Byte(ord(ch)))
+        i += 1
+
+    log('CHAR %s', operation)
+    return operation, i
 
 
 def re2post(pat: str) -> Optional[List[op]]:
@@ -113,6 +137,7 @@ def re2post(pat: str) -> Optional[List[op]]:
 
     while i < n:
         ch = pat[i]
+        #log('ch = %s', ch)
 
         if ch == '(':
             if natom > 1:
@@ -125,7 +150,7 @@ def re2post(pat: str) -> Optional[List[op]]:
 
         elif ch == '|':
             if natom == 0:
-                return None  # error: nothing to alternate
+                raise RuntimeError('Missing LHS to |')
 
             natom -= 1
             while natom > 0:
@@ -138,10 +163,10 @@ def re2post(pat: str) -> Optional[List[op]]:
             try:
                 p = paren.pop()
             except IndexError:
-                return None
+                raise RuntimeError('Unbalanced )')
 
             if natom == 0:
-                return None
+                raise RuntimeError('Empty ()')
 
             natom -= 1
 
@@ -158,7 +183,7 @@ def re2post(pat: str) -> Optional[List[op]]:
 
         elif ch in ('*', '+', '?'):
             if natom == 0:
-                return None  # error: nothing to repeat
+                raise RuntimeError('Nothing to repeat')
             dst.append(Repeat(ch))
 
         # Enhancement for "any byte" (was bug fix in Rust)
@@ -168,6 +193,15 @@ def re2post(pat: str) -> Optional[List[op]]:
                 dst.append(Cat())
 
             dst.append(Dot())
+            natom += 1
+
+        elif ch == '[':
+            if natom > 1:
+                natom -= 1
+                dst.append(Cat())
+
+            operation, i = ParseCharClass(pat, i)
+            dst.append(operation)
             natom += 1
 
         elif ch == '\\':
@@ -195,15 +229,17 @@ def re2post(pat: str) -> Optional[List[op]]:
 
         i += 1
 
+    #log('DONE')
+
     if len(paren) != 0:
-        return None
+        raise RuntimeError('Unclosed (')
 
     # Rust bug fix
     # The original program doesn't handle this case, which in turn
     # causes UB in post2nfa. It occurs when a pattern ends with a |.
     # Other cases like `a||b` and `(a|)` are rejected correctly above.
     if natom == 0 and nalt > 0:
-        return None
+        raise RuntimeError('The | operator is missing a RHS')
 
     natom -= 1
     while natom > 0:
@@ -234,6 +270,13 @@ class DotState:
 
 
 @dataclass
+class CharClassState:
+    negated: bool
+    items: List[class_item]
+    out: Optional['State']
+
+
+@dataclass
 class Split:
     out1: 'State'
     out2: Optional['State']
@@ -244,7 +287,7 @@ class Match:
     pass
 
 
-State = Union[Literal, DotState, Split, Match]
+State = Union[Literal, DotState, CharClassState, Split, Match]
 
 
 @dataclass
@@ -282,17 +325,19 @@ def Patch(patches: List[ToPatch], st: State):
                         to_patch.out = st
                     case DotState(_):
                         to_patch.out = st
+                    case CharClassState(_, _):
+                        to_patch.out = st
                     case Split(_, _):
                         to_patch.out1 = st
                     case _:
-                        raise RuntimeError('Invalid')
+                        raise RuntimeError('Invalid patch 1')
 
             case Out2(to_patch):
                 match to_patch:
                     case Split(_, _):
                         to_patch.out2 = st
                     case _:
-                        raise RuntimeError('Invalid')
+                        raise RuntimeError('Invalid patch 2')
 
 
 def post2nfa(postfix: List[op]) -> Optional[State]:
@@ -343,14 +388,21 @@ def post2nfa(postfix: List[op]) -> Optional[State]:
                 stack.append(Frag(st_dot, out))
 
             case CharClass(negated, items):
-                raise NotImplementedError('CharClass')
+                st_char = CharClassState(negated, items, None)
+                out = [Out1(st_char)]
+                stack.append(Frag(st_char, out))
 
             case _:
                 raise RuntimeError('oops')
 
+    if 0:
+        for item in stack:
+            log('STACK %s', item)
+        log('')
+
     e = stack.pop()
     if len(stack) != 0:
-        return None
+        raise RuntimeError('Stack should be empty: %s' % stack)
 
     st_match = Match()
     Patch(e.out, st_match)
@@ -394,8 +446,20 @@ def match(start: State, s: str) -> bool:
                     #log('b %d c %d', b , c)
                     if b == c:
                         addstate(nlist, st.out)
+
                 case DotState(_):
                     addstate(nlist, st.out)
+
+                case CharClassState(negated, items, _):
+                    #log('b %d items %s', b , items)
+                    matched = False
+                    for item in items:
+                        match item:
+                            case Byte(c):
+                                if b == c:
+                                    matched = True
+                    if matched:
+                        addstate(nlist, st.out)
 
         clist, nlist = nlist, clist
         nlist.clear()
@@ -446,9 +510,10 @@ def main(argv):
             print('bad regexp')  # for ./test harness
             raise RuntimeError('Syntax error in %r' % pat)
 
-        DEBUG = False
+        #DEBUG = False
+        DEBUG = True
         if DEBUG:
-            print(p)
+            log('POST %s', p)
 
         nfa = post2nfa(p)
         if nfa is None:

@@ -99,7 +99,7 @@ test-infinite-repeat() {
   #match-case 'a**' $(repeat a 30)
   #match-case 'a*+' $(repeat a 30)
   #match-case 'a?*' $(repeat a 30)
-  match-case 'a?+' $(repeat a 30)
+  match-case 'a?+' aaa
 
   # Not a bug
   #match-case 'a*?' $(repeat a 30)
@@ -120,7 +120,47 @@ test-backslash() {
   match-case '\.' '\'
 }
 
-match() {
+test-char-class() {
+  match-case '[\"]' 'a'
+  match-case '[\"]' '\'
+  match-case '[\"]' '"'
+
+  # Special rule
+  match-case '[]"]' ']'
+  match-case '[]a]' 'a'
+  match-case '[]a]' 'z'
+
+  match-case 'a[\"]' 'a\'
+  match-case 'a[\"]' 'a"'
+}
+
+test-or() {
+  # C-style / JSON-style string literal
+  local pat='"(ab|cd)*"'
+
+  match-case "$pat" '"ab"'
+  match-case "$pat" '"cd"'
+  match-case "$pat" '"abcd"'
+
+  # No
+  match-case "$pat" '"abc"'
+
+  match-case "$pat" '""'
+
+}
+
+test-favorite() {
+  # C-style / JSON-style string literal
+  # Oh we need negation
+  local fav='"([^"\]|\\.)*"'
+
+  match-case "$fav" 'no'
+  match-case "$fav" '"no'
+
+  match-case "$fav" '"yes"'
+}
+
+test-matches() {
   match-case 'a' a
   match-case 'a|b' a
   match-case 'a|b' b

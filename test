@@ -40,6 +40,10 @@ a*/a/match
 a*/aaaaa/match
 a*/aaaaab/nomatch
 
+# Oils PATCH: check double repetition
+a**/aaaaa/match
+a**/aaaaab/nomatch
+
 a+//nomatch
 a+/a/match
 a+/aaaaa/match
