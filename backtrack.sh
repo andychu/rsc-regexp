@@ -55,12 +55,12 @@ compare() {
   echo "   IMPL = $impl   pat = $pat"
 
   echo
-  echo "text=$text"
+  echo "text $text"
   time $impl-match "$pat" "$text"
 
   # Perl doesn't backtrack here
   echo
-  echo "text=${text}z"
+  echo "text ${text}z"
   time $impl-match "${pat}$" "${text}z"
 
   # nodejs still backtracks here!
@@ -69,7 +69,7 @@ compare() {
   local nomatch="${text::-1}"
   #echo nomatch=$nomatch
 
-  echo "text=${nomatch}"
+  echo "text ${nomatch}"
   time $impl-match "$pat" "$nomatch"
 
   #time perl -e 'print "hi"';
@@ -160,15 +160,11 @@ compare-csv() {
   compare $impl "$pat" "$text"
 }
 
-
 # https://blog.cloudflare.com/details-of-the-cloudflare-outage-on-july-2-2019/
 #
-# Hm Python and node.js don't backtrack.  Maybe they optimized this case,
-# fixing the bug?
-#
-# Let's see about Perl.
+# Hm this case is too short to reproduce the slowness?
 
-compare-cloudflare() {
+compare-cloudflare-short() {
   local impl=${1:-py}
   local n=${2:-25}
 
@@ -188,12 +184,33 @@ compare-cloudflare() {
   compare $impl "$pat" "$text"
 }
 
+# Deleted ' since it shouldn't matter
+readonly CF='(?:(?:\"|\]|\}|\\|\d|(?:nan|infinity|true|false|null|undefined|symbol|math)|\`|\-|\+)+[)]*;?((?:\s|-|~|!|{}|\|\||\+)*.*(?:.*=.*)))'
+
+# Turn (?:) into () since it doesn't matter
+CF2='((\"|\]|\}|\\|\d|(nan|infinity|true|false|null|undefined|symbol|math)|\`|\-|\+)+[)]*;?((\s|-|~|!|{}|\|\||\+)*.*(.*=.*)))'
+
+compare-cloudflare() {
+  local impl=${1:-py}
+  local n=${2:-25}
+
+  local text
+  text="false x=$(repeat 'x' $n)"
+  #text="$(repeat 'x' $n)"
+
+  compare $impl "$CF2" "$text"
+}
+
 compare-all() {
   #compare-py
 
-  for impl in pynfa py nodejs perl; do
+  #for impl in pynfa py nodejs perl; do
+  for impl in py nodejs perl; do
     #compare-syn-1 $impl
-    compare-csv $impl 25
+    #compare-csv $impl 25
+    compare-cloudflare $impl 500 # 500
+    echo
+    echo
   done
 }
 
