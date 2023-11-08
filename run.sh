@@ -120,7 +120,21 @@ test-backslash() {
   match-case '\.' '\'
 }
 
+test-char-class-bad() {
+  set +o errexit
+  match-case '[ab' 'a'
+
+  match-case '[a\' 'a'
+
+  # This is unclosed
+  match-case '[]' 'a'
+
+  # Also unclosed
+  match-case '[^]' 'a'
+}
+
 test-char-class() {
+
   match-case '[\"]' 'a'
   match-case '[\"]' '\'
   match-case '[\"]' '"'
@@ -158,6 +172,11 @@ test-favorite() {
   match-case "$fav" '"no'
 
   match-case "$fav" '"yes"'
+  match-case "$fav" '"yes\n"'
+  match-case "$fav" '"\n\t\\"'
+
+  match-case "$fav" '"\"'
+  match-case "$fav" '"\ab"'
 }
 
 test-matches() {

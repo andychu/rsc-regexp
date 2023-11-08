@@ -105,18 +105,40 @@ def ParseCharClass(pat: str, i: int) -> Tuple[op, int]:
     i += 1
     first_index = i  # special case for []]
 
+    chars = []
     while True:
         if i >= n:
             raise RuntimeError('Missing closing ]')
 
         ch = pat[i]
+
+        if ch == '^':
+            operation.negated = True
+            i += 1
+            continue
+
+        # There are no \ escapes, because special chars can be put first
+        #     [-ab]
+        #     []ab]
+        #
+        # Or last:
+        #     [z^]
+        #
+        # And singletons are always expressible without char classes.
+
         if ch == ']' and i != first_index:
             break
 
-        operation.items.append(Byte(ord(ch)))
+        chars.append(ch)
         i += 1
 
-    log('CHAR %s', operation)
+    if len(chars) == 0:
+        # [^] would be empty
+        raise RuntimeError('Empty char class not allowed')
+
+    operation.items = [Byte(ord(ch)) for ch in chars]
+
+    #log('CHAR %s', operation)
     return operation, i
 
 
@@ -458,6 +480,8 @@ def match(start: State, s: str) -> bool:
                             case Byte(c):
                                 if b == c:
                                     matched = True
+                    if negated:
+                        matched = not matched
                     if matched:
                         addstate(nlist, st.out)
 
