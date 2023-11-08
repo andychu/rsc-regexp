@@ -105,6 +105,21 @@ test-infinite-repeat() {
   #match-case 'a*?' $(repeat a 30)
 }
 
+test-backslash() {
+  match-case '\\' '\'
+  match-case '\\' 'z'
+
+  match-case '\\+' '\\\'
+  match-case '\\+' ''
+
+  match-case '\\+' '\\\'
+  match-case '\\+' ''
+
+  match-case '\.' '.'
+  match-case '\.' 'a'
+  match-case '\.' '\'
+}
+
 match() {
   match-case 'a' a
   match-case 'a|b' a
@@ -137,6 +152,8 @@ match() {
   match-case 'a(b|c)*d' acbcbbccd
   match-case 'a(b|c)*d' ad
   match-case 'a(b|c)*d' a
+  match-case 'a(b|c)*d' dad
+
   match-case 'a(b|c)*d' dad
 
   return

@@ -108,7 +108,11 @@ def re2post(pat: str) -> Optional[List[op]]:
     paren: List[Tuple[int, int]] = []
     dst: List[op] = []
 
-    for ch in pat:
+    i = 0
+    n = len(pat)
+
+    while i < n:
+        ch = pat[i]
 
         if ch == '(':
             if natom > 1:
@@ -166,12 +170,30 @@ def re2post(pat: str) -> Optional[List[op]]:
             dst.append(Dot())
             natom += 1
 
+        elif ch == '\\':
+            if i == n - 1:
+                raise RuntimeError('Expected char after \\')
+            else:
+                i += 1
+
+            if natom > 1:
+                natom -= 1
+                dst.append(Cat())
+
+            # This works for \\ \. etc.
+            # TODO: \t \r \n
+            ch = pat[i]
+            dst.append(Byte(ord(ch)))
+            natom += 1
+
         else:
             if natom > 1:
                 natom -= 1
                 dst.append(Cat())
             dst.append(Byte(ord(ch)))
             natom += 1
+
+        i += 1
 
     if len(paren) != 0:
         return None

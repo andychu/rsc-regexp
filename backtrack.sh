@@ -211,6 +211,12 @@ install-pcregrep() {
 # Hm not able to reproduce, on the matching text.
 #
 # But maybe they used an even older version.
+#
+# NEW HYPOTHESIS: pcregrep isn't enough because it's not doing the CAPTURE
+# operation.
+#
+# pcregrep doesn't appear to have capturing options, as ripgrep does.
+
 
 CF3='.*.*=.*;'
 
@@ -237,6 +243,8 @@ try-pcregrep() {
 
 # Both mentioned here, but no repros
 # https://levelup.gitconnected.com/the-regular-expression-denial-of-service-redos-cheat-sheet-a78d0ed7d865
+#
+# Doesn't mention captures?
 
 SO_PAT='^[\s\u200c]+|[\s\u200c]+$'
 SO_PAT2='\s+$'
