@@ -534,8 +534,8 @@ def main(argv):
             print('bad regexp')  # for ./test harness
             raise RuntimeError('Syntax error in %r' % pat)
 
-        #DEBUG = False
-        DEBUG = True
+        DEBUG = False
+        #DEBUG = True
         if DEBUG:
             log('POST %s', p)
 
